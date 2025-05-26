@@ -13,6 +13,12 @@ export default {
         foreground: "var(--foreground)",
       },
     },
+    fontFamily: {
+      // OVERRIDE the default 'sans' font stack
+      sans: ['var(--font-work-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif', "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"],
+      // You can still keep a custom name if you want, but 'sans' is what's used by default
+      'work-sans': ['var(--font-work-sans)', 'sans-serif'],
+    },
   },
   plugins: [],
 } satisfies Config;
