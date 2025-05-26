@@ -1,10 +1,56 @@
 'use client';
 
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAddProductStore } from '../../store/addProductStore';
 import { useEffect, useState } from 'react';
 import { Switch } from '@headlessui/react';
 import clsx from 'clsx';
 
+// Zod Schema for combinations
+const schema = z.object({
+  combinations: z.record(
+    z.string(),
+    z.object({
+      name: z.string(),
+      sku: z.string().min(1, 'SKU is required'),
+      inStock: z.boolean(),
+      quantity: z.number().nullable(),
+    }).refine(
+      (data) => {
+        if (data.inStock) {
+          return typeof data.quantity === 'number' && data.quantity > 0;
+        }
+        return true;
+      },
+      {
+        path: ['quantity'],
+        message: 'Quantity must be greater than 0 when in stock',
+      }
+    )
+  ).refine((combinations) => {
+    const skus = Object.values(combinations)
+      .map(combo => combo.sku.trim())
+      .filter(sku => sku !== '');
+    const uniqueSkus = new Set(skus);
+    return skus.length === uniqueSkus.size;
+  }, {
+    message: 'All SKUs must be unique',
+    path: ['combinations']
+  }),
+});
+
+
+export type Step3FormData = z.infer<typeof schema>;
+
+export function useStep3Form(defaultValues: Step3FormData) {
+  return useForm<Step3FormData>({
+    resolver: zodResolver(schema),
+    defaultValues,
+    mode: 'onChange', // Validate on change for real-time feedback
+  });
+}
 
 interface Combination {
   name: string;
@@ -12,7 +58,6 @@ interface Combination {
   inStock: boolean;
   quantity: number | null;
 }
-
 
 function generateCombinations(variants: { name: string; values: string[] }[]): Record<string, Combination> {
   if (variants.length === 0) return {};
@@ -37,7 +82,8 @@ function generateCombinations(variants: { name: string; values: string[] }[]): R
   return result;
 }
 
-export default function Step3Combinations() {
+export default function Step3Combinations({ form }: { form: ReturnType<typeof useStep3Form> }) {
+  const { register, setValue, formState: { errors, touchedFields, isSubmitted }, trigger } = form;
   const { data, updateData } = useAddProductStore();
   const [localCombos, setLocalCombos] = useState<Record<string, Combination>>({});
 
@@ -46,16 +92,18 @@ export default function Step3Combinations() {
       if (!data.combinations || Object.keys(data.combinations).length === 0) {
         const generated = generateCombinations(data.variants);
         setLocalCombos(generated);
+        setValue('combinations', generated);
         updateData({ combinations: generated });
       } else {
         setLocalCombos(data.combinations);
+        setValue('combinations', data.combinations);
       }
     }
-  }, [data.variants, data.combinations, updateData]);
-  
+  }, [data.variants, data.combinations, setValue, updateData]);
 
-  const handleUpdate = (key: string, field: keyof Combination, value: string | boolean) => {
+  const handleUpdate = async (key: string, field: keyof Combination, value: string | boolean) => {
     const updated = { ...localCombos };
+    
     if (field === 'quantity') {
       updated[key][field] = value === '' ? null : Number(value);
     } else {
@@ -64,17 +112,47 @@ export default function Step3Combinations() {
         updated[key].quantity = null;
       }
     }
+    
     setLocalCombos(updated);
+    setValue('combinations', updated);
     updateData({ combinations: updated });
+    
+    // Trigger validation for the specific field and overall combinations
+    await trigger(['combinations']);
   };
 
   const isDuplicateSKU = (sku: string, currKey: string): boolean => {
     return Object.entries(localCombos).some(([key, c]) => key !== currKey && c.sku === sku && sku !== '');
   };
 
+  const getFieldError = (key: string, field: keyof Combination) => {
+    return errors.combinations?.[key]?.[field]?.message;
+  };
+
+  const isFieldTouched = (key: string, field: keyof Combination) => {
+    return touchedFields.combinations?.[key]?.[field];
+  };
+
+  const shouldShowError = (key: string, field: keyof Combination) => {
+    return isFieldTouched(key, field) || isSubmitted;
+  };
+
+  const hasGlobalError = () => {
+    return errors.combinations && typeof errors.combinations.message === 'string';
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold">Combinations</h2>
+
+      {/* Global error for duplicate SKUs */}
+      {hasGlobalError() && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-sm">
+            {typeof errors.combinations?.message === 'string' ? errors.combinations.message : 'Please fix the errors below'}
+          </p>
+        </div>
+      )}
 
       {/* Headers */}
       <div className="grid grid-cols-4 gap-4 text-xs font-medium text-gray-600">
@@ -91,24 +169,32 @@ export default function Step3Combinations() {
           {/* SKU */}
           <div>
             <input
+              {...register(`combinations.${key}.sku`)}
               value={combo.sku}
               onChange={(e) => handleUpdate(key, 'sku', e.target.value)}
               className={clsx(
                 'border p-2 w-full rounded-lg text-sm',
-                (isDuplicateSKU(combo.sku, key) || combo.sku.trim() === '') && 'border-red-500'
+                ((getFieldError(key, 'sku') && shouldShowError(key, 'sku')) || 
+                 (isDuplicateSKU(combo.sku, key) && combo.sku.trim() !== '') || 
+                 (combo.sku.trim() === '' && shouldShowError(key, 'sku'))) && 'border-red-500'
               )}
               placeholder="Enter SKU"
             />
-            {combo.sku.trim() === '' ? (
+            {getFieldError(key, 'sku') && shouldShowError(key, 'sku') && (
+              <p className="text-red-500 text-xs mt-1">{getFieldError(key, 'sku')}</p>
+            )}
+            {!getFieldError(key, 'sku') && combo.sku.trim() === '' && shouldShowError(key, 'sku') && (
               <p className="text-red-500 text-xs mt-1">SKU is required</p>
-            ) : isDuplicateSKU(combo.sku, key) ? (
+            )}
+            {!getFieldError(key, 'sku') && combo.sku.trim() !== '' && isDuplicateSKU(combo.sku, key) && (
               <p className="text-red-500 text-xs mt-1">Duplicate SKU</p>
-            ) : null}
+            )}
           </div>
 
           {/* In stock */}
           <div className="pt-2">
             <Switch
+              {...register(`combinations.${key}.inStock`)}
               checked={combo.inStock}
               onChange={(val) => handleUpdate(key, 'inStock', val)}
               className={clsx(
@@ -128,16 +214,23 @@ export default function Step3Combinations() {
           {/* Quantity */}
           <div>
             <input
+              {...register(`combinations.${key}.quantity`, {
+                setValueAs: (value) => value === '' ? null : Number(value)
+              })}
               type="number"
               value={combo.quantity ?? ''}
               onChange={(e) => handleUpdate(key, 'quantity', e.target.value)}
               className={clsx(
                 'border p-2 w-full rounded-lg text-sm',
-                !combo.inStock && 'bg-[#E2E8F0]'
+                !combo.inStock && 'bg-[#E2E8F0]',
+                getFieldError(key, 'quantity') && 'border-red-500'
               )}
               disabled={!combo.inStock}
-              placeholder="0"
+             
             />
+            {getFieldError(key, 'quantity') && (
+              <p className="text-red-500 text-xs mt-1">{getFieldError(key, 'quantity')}</p>
+            )}
           </div>
         </div>
       ))}

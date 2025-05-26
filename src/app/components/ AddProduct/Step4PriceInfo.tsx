@@ -50,22 +50,25 @@ export default function Step4PriceInfo({ form }: { form: ReturnType<typeof useSt
     <div className="space-y-6">
       <h2 className="text-base font-semibold">Price Info</h2>
 
-      {/* Price */}
-      <div>
-        <label className="block text-sm mb-1">Price *</label>
-        <div className="relative">
-          <input
-            type="number"
-            {...register('price')}
-            className={clsx(
-              'border p-2 pl-8 w-full rounded-lg text-sm',
-              errors.price && 'border-red-500'
-            )}
-            placeholder="Enter price"
-          />
-        </div>
-        {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
-      </div>
+   {/* Price */}
+<div>
+  <label className="block text-sm mb-1">Price *</label>
+  <div className="relative">
+    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
+      ₹
+    </span>
+    <input
+      type="number"
+      {...register('price')}
+      className={clsx(
+        'border p-2 pl-8 w-full rounded-lg text-sm',
+        errors.price && 'border-red-500'
+      )}
+      placeholder="Enter price"
+    />
+  </div>
+  {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
+</div>
 
       {/* Discount */}
       <div>

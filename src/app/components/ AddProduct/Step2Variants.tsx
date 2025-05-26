@@ -4,18 +4,21 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { TrashIcon } from '@heroicons/react/24/outline';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 
 const schema = z.object({
-  variants: z.array(
-    z.object({
-      name: z.string().min(1, 'Option can’t be empty'),
-      values: z.array(z.string().min(1, 'Please enter a value')).min(1, 'Add at least one value'),
-    })
-  ),
+  variants: z
+    .array(
+      z.object({
+        name: z.string().min(1, 'Option can’t be empty'),
+        values: z
+          .array(z.string().min(1, 'Please enter a value'))
+          .min(1, 'Add at least one value'),
+      })
+    )
+    .min(1, 'Add at least one option'), // ✅ This ensures minimum 1 option
 });
-
 type VariantForm = z.infer<typeof schema>;
 
 export function useStep2Form(defaultValues: VariantForm) {
@@ -25,33 +28,38 @@ export function useStep2Form(defaultValues: VariantForm) {
   });
 }
 
+
+
 export default function Step2Variants({ form }: { form: ReturnType<typeof useStep2Form> }) {
   const { control, register, watch, setValue, formState: { errors } } = form;
   const { fields, append, remove } = useFieldArray({ control, name: 'variants' });
 
   const [inputValues, setInputValues] = useState<string[]>([]);
-
-  const handleAddOption = () => {
+  
+  const handleAddOption = useCallback(() => {
     append({ name: '', values: [] });
     setInputValues((prev) => [...prev, '']);
-  };
-
+  }, [append, setInputValues]);
+  
+  
   const handleInputChange = (val: string, index: number) => {
     const newInputs = [...inputValues];
     newInputs[index] = val;
     setInputValues(newInputs);
   };
-
   const handleEnter = (index: number) => {
     const values = watch(`variants.${index}.values`) || [];
     const currentInput = inputValues[index]?.trim();
-
+  
     if (currentInput && !values.includes(currentInput)) {
       const updated = [...values, currentInput];
-      setValue(`variants.${index}.values`, updated);
+      setValue(`variants.${index}.values`, updated, {
+        shouldValidate: true, // ✅ this triggers re-validation
+      });
       handleInputChange('', index);
     }
   };
+  
 
   const handleRemoveTag = (variantIndex: number, valueIndex: number) => {
     const values = watch(`variants.${variantIndex}.values`) || [];
