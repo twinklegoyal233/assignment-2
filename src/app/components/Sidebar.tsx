@@ -66,7 +66,7 @@ export default function Sidebar() {
                         }`}
                       >
                         <div className="flex gap-3">
-                          <Image  src="./rect.svg" alt="rectangle" width={20} height={20}/>
+                          <Image  src="/rect.svg" alt="rectangle" width={20} height={20}/>
                         {item}
                         </div>
               
@@ -75,7 +75,7 @@ export default function Sidebar() {
                   ) : (
                     <span className="block p-2 rounded-lg hover:bg-[#ECF7FF] cursor-default text-black">
                       <div className="flex gap-3">
-                          <Image  src="./rect.svg" alt="rectangle" width={20} height={20}/>
+                          <Image  src="/rect.svg" alt="rectangle" width={20} height={20}/>
                         {item}
                         </div>
                     </span>
