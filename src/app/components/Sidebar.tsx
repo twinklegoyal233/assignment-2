@@ -66,7 +66,8 @@ export default function Sidebar() {
                         }`}
                       >
                         <div className="flex gap-3">
-                          <Image  src="/rect.svg" alt="rectangle" width={20} height={20}/>
+                          <Image  src="/rect.png" alt="rectangle" width={20} height={20}/>
+                          
                         {item}
                         </div>
               

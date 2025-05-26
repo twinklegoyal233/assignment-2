@@ -17,8 +17,8 @@ export const useProductStore = create<Store>((set) => ({
       id: "1",
       name: "Shoes",
       products: [
-        { id: "p1", name: "Nike Air Jordan", price: 12000, brand: "Nike", image: "/nike.svg" },
-        { id: "p2", name: "Nike Dunk Low", price: 8000, brand: "Nike", image: "/nike.svg" },
+        { id: "p1", name: "Nike Air Jordan", price: 12000, brand: "Nike", image: "/nike.png" },
+        { id: "p2", name: "Nike Dunk Low", price: 8000, brand: "Nike", image: "/nike.png" },
       ],
     },
     { id: "2", name: "T-shirt", products: [] },
