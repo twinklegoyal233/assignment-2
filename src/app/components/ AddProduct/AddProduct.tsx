@@ -12,10 +12,28 @@ import { useRouter } from 'next/navigation';
 import { useProductStore } from '../../store/productStore';
 import { useEffect, useState } from 'react';
 
+// Helper function to validate final price
+const validateFinalPrice = (price: number, discount?: { method: 'flat' | 'pct'; value: number }) => {
+  if (!discount || discount.value <= 0) return true;
+  
+  let finalPrice = price;
+  
+  if (discount.method === 'pct') {
+    if (discount.value > 100) return false;
+    finalPrice = price - (price * discount.value) / 100;
+  } else {
+    if (discount.value >= price) return false;
+    finalPrice = price - discount.value;
+  }
+  
+  return finalPrice > 0;
+};
+
 export default function AddProduct() {
   const { step, data, updateData, setStep, reset } = useAddProductStore();
   const { categories, addProduct } = useProductStore();
   const [showResume, setShowResume] = useState(false);
+  const [priceError, setPriceError] = useState<string>('');
   const router = useRouter();
   
   useEffect(() => {
@@ -48,7 +66,6 @@ export default function AddProduct() {
             ]
       });
       
-
       form3.reset({
         combinations: draft.combinations || {},
       });
@@ -69,6 +86,7 @@ export default function AddProduct() {
     reset();                   
     setStep(0);               
     setShowResume(false);      
+    setPriceError('');
   };
 
   // Initialize all forms
@@ -98,6 +116,8 @@ export default function AddProduct() {
   });
 
   const handleNext = () => {
+    setPriceError(''); // Clear any previous errors
+
     if (step === 0) {
       form.handleSubmit((values) => {
         updateData(values);
@@ -118,11 +138,27 @@ export default function AddProduct() {
       })();
     } else if (step === 3) {
       form4.handleSubmit(() => {
+        // Validate pricing before proceeding
+        const price = Number(data.priceInr);
+        const discount = data.discount;
+
+        if (price <= 0) {
+          setPriceError('Product price must be greater than 0');
+          return;
+        }
+
+        if (!validateFinalPrice(price, discount)) {
+          setPriceError('Invalid discount: Final price cannot be zero or negative');
+          return;
+        }
+
         const newProductData = {
           ...data,
           id: uuid(),
-          price: Number(data.priceInr),
+          price: price,
           image: data.image || '/fallbackImage.png',
+          // Only include discount if it's valid and greater than 0
+          discount: discount && discount.value > 0 ? discount : undefined,
         };
 
         const matchingCategory = categories.find(
@@ -131,15 +167,15 @@ export default function AddProduct() {
 
         if (matchingCategory) {
           addProduct(matchingCategory.id, newProductData);
+          reset();
+          setStep(0);
+          saveDraft(null);
+          router.push('/products');
         } else {
           console.error('Category not found:', data.category);
+          setPriceError('Selected category not found');
           return;
         }
-
-        reset();
-        setStep(0);
-        saveDraft(null);
-        router.push('/products');
       })();
     }
   };
@@ -179,7 +215,10 @@ export default function AddProduct() {
           ) : (
             <>
               <button
-                onClick={() => setStep(step - 1)}
+                onClick={() => {
+                  setPriceError('');
+                  setStep(step - 1);
+                }}
                 className="bg-[#E1E7EB] px-12 py-2 font-semibold rounded-lg text-[#1F8CD0]"
               >
                 Back
@@ -194,6 +233,13 @@ export default function AddProduct() {
           )}
         </div>
       </div>
+
+      {/* Price Error Display */}
+      {priceError && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {priceError}
+        </div>
+      )}
 
       <div className="flex gap-4 mb-6 text-sm">
         <span
