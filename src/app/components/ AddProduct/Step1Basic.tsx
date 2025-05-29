@@ -5,12 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useProductStore } from '../../store/productStore';
 import { useAddProductStore } from '../../store/addProductStore';
 import Image from 'next/image';
+import { useEffect } from 'react';
 
 
 const schema = z.object({
   name: z.string().min(1, 'Product name is required'),
   category: z.string().min(1, 'Category is required'),
   brand: z.string().min(1, 'Brand is required'),
+  image : z.string().optional(),
 });
 
 export type Step1FormData = z.infer<typeof schema>;
@@ -23,10 +25,20 @@ export function useStep1Form(defaultValues: Step1FormData) {
 }
 
 export default function Step1Basic({ form }: { form: ReturnType<typeof useStep1Form> }) {
-  const { register, formState: { errors } } = form;
+  const { register, formState: { errors }, watch, setValue, trigger } = form;
   const categories = useProductStore((state) => state.categories);
   const image = useAddProductStore((state) => state.data.image);
   const updateData = useAddProductStore((state) => state.updateData);
+
+  useEffect(() => {
+    register('image');
+  }, [register]);
+
+   
+    useEffect(() => {
+      setValue('image', image || '');
+      trigger('image');
+    }, [setValue, image, trigger]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -43,7 +55,11 @@ export default function Step1Basic({ form }: { form: ReturnType<typeof useStep1F
 
   const handleRemoveImage = () => {
     updateData({ image: '' });
+    setValue('image', ''); // Clear form value
+    trigger('image'); // Trigger validation
   };
+
+const categoryValue = watch('category')
 
   return (
     <div className="space-y-6">
@@ -58,7 +74,7 @@ export default function Step1Basic({ form }: { form: ReturnType<typeof useStep1F
         <select
           {...register('category')}
           className="border p-2 w-full rounded-lg"
-          defaultValue=""
+         value={categoryValue}
         >
           <option value="" disabled>Select category</option>
           {categories.map((cat) => (
@@ -75,22 +91,23 @@ export default function Step1Basic({ form }: { form: ReturnType<typeof useStep1F
       </div>
 
       <div>
-        <label className="block text-sm mb-1">Product Image</label>
+        <label className="block text-sm mb-1">Product Image *</label>
         <div className="w-fit">
           <label
             htmlFor="upload"
             className="cursor-pointer flex gap-2 items-center border border-[#1F8CD0] text-[#1F8CD0] py-2 px-4 rounded-lg font-semibold"
           >
-            <Image alt="upload" src="/upload.svg" width={20} height={20} />
+            <Image  alt="upload" src="/upload.svg" width={20} height={20} />
             Upload Image
           </label>
-          <input
+          <input  
             id="upload"
             type="file"
             accept="image/*"
             className="hidden"
             onChange={handleImageUpload}
           />
+          {errors.image && <p className="text-red-500 text-sm mt-2">{String(errors.image.message)}</p>}
         </div>
 
         {image && (

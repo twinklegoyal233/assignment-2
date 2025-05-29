@@ -20,7 +20,7 @@ const schema = z.object({
     }).refine(
       (data) => {
         if (data.inStock) {
-          return typeof data.quantity === 'number' && data.quantity > 0;
+          return typeof data.quantity === null || (typeof data.quantity === 'number') && data.quantity > 0;
         }
         return true;
       },
@@ -86,6 +86,7 @@ export default function Step3Combinations({ form }: { form: ReturnType<typeof us
   const { register, setValue, formState: { errors, touchedFields, isSubmitted }, trigger } = form;
   const { data, updateData } = useAddProductStore();
   const [localCombos, setLocalCombos] = useState<Record<string, Combination>>({});
+
 
   useEffect(() => {
     if (data.variants && data.variants.length > 0) {
@@ -228,9 +229,10 @@ export default function Step3Combinations({ form }: { form: ReturnType<typeof us
               disabled={!combo.inStock}
              
             />
-            {getFieldError(key, 'quantity') && (
-              <p className="text-red-500 text-xs mt-1">{getFieldError(key, 'quantity')}</p>
-            )}
+           {getFieldError(key, 'quantity') && shouldShowError(key, 'quantity') && (
+  <p className="text-red-500 text-xs mt-1">{getFieldError(key, 'quantity')}</p>
+)}
+
           </div>
         </div>
       ))}

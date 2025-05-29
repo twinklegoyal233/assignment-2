@@ -34,6 +34,7 @@ export default function AddProduct() {
   const { categories, addProduct } = useProductStore();
   const [showResume, setShowResume] = useState(false);
   const [priceError, setPriceError] = useState<string>('');
+  const [isCheckingDraft, setIsCheckingDraft] = useState(true); // Start as TRUE
   const router = useRouter();
   
   useEffect(() => {
@@ -42,9 +43,11 @@ export default function AddProduct() {
       if (draft && Object.keys(draft).length > 0) {
         setShowResume(true);
       }
+      setIsCheckingDraft(false)
     };
     checkDraft();
   }, []);
+
 
   const handleResume = async () => {
     const draft = await getDraft();
@@ -54,6 +57,7 @@ export default function AddProduct() {
         name: draft.name || '',
         category: draft.category || '',
         brand: draft.brand || '',
+        image: draft.image || '',
       });                       
   
       form2.reset({
@@ -75,7 +79,7 @@ export default function AddProduct() {
         discount: draft.discount?.value?.toString() || '',
         discountType: draft.discount?.method === 'flat' ? '$' : '%',
       });
-                         
+      await new Promise(resolve => setTimeout(resolve, 50)); // Brief delay               
       setStep(draft.step || 0);  
     }
     setShowResume(false);
@@ -94,6 +98,7 @@ export default function AddProduct() {
     name: data.name || '',
     category: data.category || '',
     brand: data.brand || '',
+    image: data.image || '',
   });
 
   const form2 = useStep2Form({
@@ -115,16 +120,29 @@ export default function AddProduct() {
     discountType: data.discount?.method === 'flat' ? '$' : '%',
   });
 
-  const handleNext = () => {
-    setPriceError(''); // Clear any previous errors
+  if (isCheckingDraft) {
+    return null; 
+  }
 
-    if (step === 0) {
-      form.handleSubmit((values) => {
-        updateData(values);
-        saveDraft({ ...data, ...values, step: 0 });
-        setStep(1);
-      })();
-    } else if (step === 1) {
+  const handleNext = () => {
+    setPriceError(''); 
+
+   
+if (step === 0) {
+  form.handleSubmit((values) => {
+    if (!values.image || values.image.length === 0) {
+      form.setError('image', {
+        type: 'manual',
+        message: 'Product image is required to proceed.',
+      });
+      return; 
+    }
+
+    updateData(values);
+    saveDraft({ ...data, ...values, step: 0 });
+    setStep(1);
+  })();
+} else if (step === 1) {
       form2.handleSubmit((values) => {
         updateData(values);
         saveDraft({ ...data, ...values, step: 1 });
@@ -190,6 +208,10 @@ export default function AddProduct() {
         </div>
       </div>
     );
+  }
+
+  if (isCheckingDraft) {
+    return null
   }
 
   return (
